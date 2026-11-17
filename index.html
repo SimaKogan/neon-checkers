@@ -17,7 +17,7 @@ select option{background:#14172e}
 button:hover,select:hover{background:rgba(124,243,255,.15);border-color:#7cf3ff}
 .card{display:flex;align-items:center;justify-content:space-between;width:var(--bs);padding:8px 14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);transition:.3s}
 .card.on{box-shadow:0 0 0 1px var(--c),0 0 22px -4px var(--c);background:rgba(255,255,255,.1)}
-.board{position:relative;width:var(--bs);aspect-ratio:1;border-radius:12px;overflow:hidden;box-shadow:0 0 0 6px #1a1f3d,0 0 0 8px rgba(124,243,255,.35),0 20px 60px -10px #000,0 0 60px -10px #7c4dff}
+.board{direction:ltr;position:relative;width:var(--bs);aspect-ratio:1;border-radius:12px;overflow:hidden;box-shadow:0 0 0 6px #1a1f3d,0 0 0 8px rgba(124,243,255,.35),0 20px 60px -10px #000,0 0 60px -10px #7c4dff}
 .grid{position:absolute;inset:0;display:grid;grid-template:repeat(8,1fr)/repeat(8,1fr)}
 .sq.l{background:#394078}
 .sq.d{background:linear-gradient(135deg,#171b3a,#0f1229);cursor:pointer;position:relative}
@@ -47,18 +47,19 @@ footer{opacity:.45;font-size:13px;margin-top:4px}
 </head>
 <body>
 <h1>NEON CHECKERS</h1>
-<p class="sub">Русские шашки · обязательное взятие · дамки летают</p>
+<p class="sub" data-t="sub"></p>
 <div class="ctl">
-  <select id="mode"><option value="ai">Против компьютера</option><option value="pvp">Вдвоём</option></select>
-  <select id="lvl"><option value="2">Лёгкий</option><option value="4" selected>Средний</option><option value="6">Сложный</option></select>
-  <button id="undo">↶ Отмена хода</button>
-  <button id="new">Новая игра</button>
+  <select id="lang" aria-label="Language"><option value="ru">Русский</option><option value="en">English</option><option value="he">עברית</option></select>
+  <select id="mode"><option value="ai" data-t="mAi"></option><option value="pvp" data-t="mPvp"></option></select>
+  <select id="lvl"><option value="2" data-t="l2"></option><option value="4" selected data-t="l4"></option><option value="6" data-t="l6"></option></select>
+  <button id="undo" data-t="undo"></button>
+  <button id="new" data-t="new"></button>
 </div>
 <div class="card" id="cb" style="--c:#ff7eb6"><span id="nb"></span><b id="kb"></b></div>
 <div class="board">
   <div class="grid" id="grid"></div>
   <div id="layer"></div>
-  <div class="modal" id="modal"><div><h2 id="mt"></h2><button id="again">Играть снова</button></div></div>
+  <div class="modal" id="modal"><div><h2 id="mt"></h2><button id="again" data-t="again"></button></div></div>
 </div>
 <div class="card" id="cw" style="--c:#7cf3ff"><span id="nw"></span><b id="kw"></b></div>
 <div id="status"></div>
@@ -154,6 +155,25 @@ function nm(b,side,d,a,bt){
   return best;
 }
 
+// ---------- языки ----------
+const T = {
+  ru:{title:'Neon Checkers — русские шашки',sub:'Русские шашки · обязательное взятие · дамки летают',mAi:'Против компьютера',mPvp:'Вдвоём',l2:'Лёгкий',l4:'Средний',l6:'Сложный',undo:'↶ Отмена хода',new:'Новая игра',again:'Играть снова',nbAi:'Компьютер · чёрные',nbP:'Чёрные',nwAi:'Вы · белые',nwP:'Белые',cnt:'{n} шт.',think:'Компьютер думает…',wTurn:'Ход белых',bTurn:'Ход чёрных',forced:' · бить обязательно!',draw:'Ничья',drawSub:'30 ходов дамками без взятий',over:'Игра окончена',youWin:'Вы победили! 🎉',cpuWin:'Компьютер победил',wWin:'Белые победили! 🎉',bWin:'Чёрные победили! 🎉'},
+  en:{title:'Neon Checkers — Russian draughts',sub:'Russian draughts · mandatory capture · flying kings',mAi:'Vs computer',mPvp:'Two players',l2:'Easy',l4:'Medium',l6:'Hard',undo:'↶ Undo',new:'New game',again:'Play again',nbAi:'Computer · black',nbP:'Black',nwAi:'You · white',nwP:'White',cnt:'{n} pcs',think:'Computer is thinking…',wTurn:'White to move',bTurn:'Black to move',forced:' · you must capture!',draw:'Draw',drawSub:'30 king moves without a capture',over:'Game over',youWin:'You win! 🎉',cpuWin:'Computer wins',wWin:'White wins! 🎉',bWin:'Black wins! 🎉'},
+  he:{title:'Neon Checkers — דמקה רוסית',sub:'דמקה רוסית · לכידה חובה · מלכים טסים',mAi:'נגד המחשב',mPvp:'שני שחקנים',l2:'קל',l4:'בינוני',l6:'קשה',undo:'↶ ביטול מהלך',new:'משחק חדש',again:'שחק שוב',nbAi:'מחשב · שחור',nbP:'שחור',nwAi:'אתה · לבן',nwP:'לבן',cnt:'{n} כלים',think:'המחשב חושב…',wTurn:'תור הלבן',bTurn:'תור השחור',forced:' · חובה ללכוד!',draw:'תיקו',drawSub:'30 מהלכי מלך ללא לכידה',over:'המשחק נגמר',youWin:'ניצחת! 🎉',cpuWin:'המחשב ניצח',wWin:'הלבן ניצח! 🎉',bWin:'השחור ניצח! 🎉'}
+};
+let lang='en';
+try{ lang=localStorage.getItem('lang')||''; }catch(e){}
+if(!T[lang]){ lang=(navigator.language||'en').slice(0,2); if(lang==='iw')lang='he'; if(!T[lang])lang='en'; }
+const t = k => T[lang][k];
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.documentElement.dir = lang==='he' ? 'rtl' : 'ltr';
+  document.title=t('title');
+  document.querySelectorAll('[data-t]').forEach(e=>e.textContent=t(e.dataset.t));
+  $('lang').value=lang;
+  if (board) refresh();
+}
+
 // ---------- состояние и интерфейс ----------
 let board, turn, mode, hist, quiet, over, busy, sel, prefix, moves, last, els;
 const grid=$('grid'), layer=$('layer');
@@ -190,20 +210,20 @@ const cands = () => moves.filter(m=>m.from===sel && prefix.every((x,k)=>m.path[k
 function refresh(){
   moves=gen(board,turn);
   const cnt=s=>board.filter(v=>v*s>0).length;
-  $('nb').textContent = mode==='ai' ? 'Компьютер · чёрные' : 'Чёрные';
-  $('nw').textContent = mode==='ai' ? 'Вы · белые' : 'Белые';
-  $('kb').textContent = cnt(-1)+' шт.'; $('kw').textContent = cnt(1)+' шт.';
+  $('nb').textContent = t(mode==='ai' ? 'nbAi' : 'nbP');
+  $('nw').textContent = t(mode==='ai' ? 'nwAi' : 'nwP');
+  $('kb').textContent = t('cnt').replace('{n}',cnt(-1)); $('kw').textContent = t('cnt').replace('{n}',cnt(1));
   $('cb').classList.toggle('on', turn===-1); $('cw').classList.toggle('on', turn===1);
   if (!moves.length) return finish(turn===1 ? -1 : 1);
   if (quiet>=30) return finish(0);
-  const forced = moves[0].caps.length ? ' · бить обязательно!' : '';
-  $('status').textContent = (mode==='ai' && turn===-1) ? 'Компьютер думает…' : (turn===1?'Ход белых':'Ход чёрных') + forced;
+  const forced = moves[0].caps.length ? t('forced') : '';
+  $('status').textContent = (mode==='ai' && turn===-1) ? t('think') : t(turn===1?'wTurn':'bTurn') + forced;
   paint();
 }
 function finish(w){
   over=true; paint();
-  $('mt').textContent = w===0 ? 'Ничья' : mode==='ai' ? (w===1?'Вы победили! 🎉':'Компьютер победил') : (w===1?'Белые победили! 🎉':'Чёрные победили! 🎉');
-  $('status').textContent = w===0 ? '30 ходов дамками без взятий' : 'Игра окончена';
+  $('mt').textContent = w===0 ? t('draw') : mode==='ai' ? t(w===1?'youWin':'cpuWin') : t(w===1?'wWin':'bWin');
+  $('status').textContent = w===0 ? t('drawSub') : t('over');
   $('modal').classList.add('show');
 }
 function click(i){
@@ -247,7 +267,9 @@ function undo(){
 }
 $('new').onclick=$('again').onclick=$('mode').onchange=newGame;
 $('undo').onclick=undo;
+$('lang').onchange=()=>{ lang=$('lang').value; try{localStorage.setItem('lang',lang);}catch(e){} applyLang(); };
 newGame();
+applyLang();
 </script>
 </body>
 </html>
