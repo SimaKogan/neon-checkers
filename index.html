@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neon Checkers — русские шашки</title>
+<style>
+*{box-sizing:border-box}
+:root{--bs:min(92vw,58vh,560px)}
+html,body{margin:0;min-height:100%}
+body{background:radial-gradient(1100px 700px at 15% -10%,#2a1a5e 0%,transparent 60%),radial-gradient(900px 600px at 110% 110%,#0b4a63 0%,transparent 55%),#0a0c18;color:#e8ecff;font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;padding:18px 12px 28px;gap:12px}
+h1{margin:0;font-size:clamp(26px,5vw,38px);letter-spacing:.08em;background:linear-gradient(90deg,#7cf3ff,#c77dff,#ff7eb6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{margin:0;opacity:.6;font-size:14px;text-align:center}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+select,button{font:inherit;color:#e8ecff;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 12px;cursor:pointer;transition:.2s}
+select option{background:#14172e}
+button:hover,select:hover{background:rgba(124,243,255,.15);border-color:#7cf3ff}
+.card{display:flex;align-items:center;justify-content:space-between;width:var(--bs);padding:8px 14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);transition:.3s}
+.card.on{box-shadow:0 0 0 1px var(--c),0 0 22px -4px var(--c);background:rgba(255,255,255,.1)}
+.board{position:relative;width:var(--bs);aspect-ratio:1;border-radius:12px;overflow:hidden;box-shadow:0 0 0 6px #1a1f3d,0 0 0 8px rgba(124,243,255,.35),0 20px 60px -10px #000,0 0 60px -10px #7c4dff}
+.grid{position:absolute;inset:0;display:grid;grid-template:repeat(8,1fr)/repeat(8,1fr)}
+.sq.l{background:#394078}
+.sq.d{background:linear-gradient(135deg,#171b3a,#0f1229);cursor:pointer;position:relative}
+.sq.last{background:#1f2b5c}
+.sq.sel{box-shadow:inset 0 0 0 3px #7cf3ff}
+.sq.step{box-shadow:inset 0 0 0 3px #ffd166}
+.sq.must{animation:glow 1.2s infinite}
+.sq.hint::after{content:"";position:absolute;inset:36%;border-radius:50%;background:#7cf3ff;box-shadow:0 0 14px #7cf3ff;animation:pulse 1s infinite}
+@keyframes pulse{50%{transform:scale(1.35);opacity:.7}}
+@keyframes glow{50%{box-shadow:inset 0 0 0 3px #ff7eb6}}
+#layer{position:absolute;inset:0;pointer-events:none}
+.p{position:absolute;width:12.5%;height:12.5%;transition:left .35s cubic-bezier(.3,.8,.3,1),top .35s cubic-bezier(.3,.8,.3,1),opacity .3s,transform .3s}
+.p.gone{opacity:0;transform:scale(.3)}
+.disc{position:absolute;inset:10%;border-radius:50%;display:grid;place-items:center}
+.disc::before{content:"";position:absolute;inset:16%;border-radius:50%;border:2px solid rgba(255,255,255,.4)}
+.w .disc{background:radial-gradient(circle at 35% 30%,#fff,#d9e7ff 45%,#8fb2ff);box-shadow:0 4px 10px #000a,0 0 16px -2px #7cf3ff,inset 0 -4px 6px #5a7bd0aa}
+.b .disc{background:radial-gradient(circle at 35% 30%,#7a4a9a,#2a1546 55%,#12082a);box-shadow:0 4px 10px #000a,0 0 16px -2px #ff7eb6,inset 0 -4px 6px #000a}
+.b .disc::before{border-color:rgba(255,126,182,.55)}
+.k .disc::after{content:"♛";position:relative;font-size:calc(var(--bs)/8*.42);color:#ffd166;text-shadow:0 0 8px #ffd166}
+.w.k .disc::after{color:#b5780a;text-shadow:0 0 6px #ffd166}
+.modal{position:absolute;inset:0;display:none;place-items:center;background:rgba(5,6,16,.75);backdrop-filter:blur(4px);text-align:center;z-index:5}
+.modal.show{display:grid}
+.modal h2{margin:0 0 14px;font-size:clamp(22px,5vw,32px);background:linear-gradient(90deg,#7cf3ff,#ff7eb6);-webkit-background-clip:text;background-clip:text;color:transparent}
+#status{min-height:1.4em;opacity:.85;text-align:center}
+footer{opacity:.45;font-size:13px;margin-top:4px}
+</style>
+</head>
+<body>
+<h1>NEON CHECKERS</h1>
+<p class="sub">Русские шашки · обязательное взятие · дамки летают</p>
+<div class="ctl">
+  <select id="mode"><option value="ai">Против компьютера</option><option value="pvp">Вдвоём</option></select>
+  <select id="lvl"><option value="2">Лёгкий</option><option value="4" selected>Средний</option><option value="6">Сложный</option></select>
+  <button id="undo">↶ Отмена хода</button>
+  <button id="new">Новая игра</button>
+</div>
+<div class="card" id="cb" style="--c:#ff7eb6"><span id="nb"></span><b id="kb"></b></div>
+<div class="board">
+  <div class="grid" id="grid"></div>
+  <div id="layer"></div>
+  <div class="modal" id="modal"><div><h2 id="mt"></h2><button id="again">Играть снова</button></div></div>
+</div>
+<div class="card" id="cw" style="--c:#7cf3ff"><span id="nw"></span><b id="kw"></b></div>
+<div id="status"></div>
+<footer>© 2026 Sima Kogan · MIT License</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const DIRS = [[-1,-1],[-1,1],[1,-1],[1,1]];
+const inb = (r,c) => r>=0 && r<8 && c>=0 && c<8;
+
+// ---------- движок: 1 / 2 = белая шашка / дамка, -1 / -2 = чёрные ----------
+function startBoard(){
+  const b = Array(64).fill(0);
+  for (let i=0;i<64;i++){
+    const r=i>>3, c=i&7;
+    if ((r+c)%2===1){ if (r<3) b[i]=-1; else if (r>4) b[i]=1; }
+  }
+  return b;
+}
+function jumps(b,r,c,p,caps,path){
+  const side=Math.sign(p), king=Math.abs(p)===2, out=[];
+  for (const [dr,dc] of DIRS){
+    let nr=r+dr, nc=c+dc;
+    if (king) while (inb(nr,nc) && b[nr*8+nc]===0){ nr+=dr; nc+=dc; }
+    if (!inb(nr,nc)) continue;
+    const ci=nr*8+nc, v=b[ci];
+    if (v*side>=0 || caps.includes(ci)) continue;
+    const cont=[], term=[];
+    let lr=nr+dr, lc=nc+dc;
+    while (inb(lr,lc) && b[lr*8+lc]===0){
+      const li=lr*8+lc, ncaps=[...caps,ci], npath=[...path,li];
+      const promo = !king && (side===1 ? lr===0 : lr===7);
+      const sub = jumps(b,lr,lc,promo?2*side:p,ncaps,npath);
+      if (sub.length) cont.push(...sub); else term.push({path:npath,caps:ncaps});
+      if (!king) break;
+      lr+=dr; lc+=dc;
+    }
+    out.push(...(cont.length?cont:term));
+  }
+  return out;
+}
+function gen(b,side){
+  const caps=[], simple=[];
+  for (let i=0;i<64;i++){
+    if (b[i]*side<=0) continue;
+    const r=i>>3, c=i&7, t=b.slice(); t[i]=0;
+    for (const m of jumps(t,r,c,b[i],[],[])) caps.push({from:i,path:m.path,caps:m.caps});
+  }
+  if (caps.length) return caps;
+  for (let i=0;i<64;i++){
+    if (b[i]*side<=0) continue;
+    const r=i>>3, c=i&7, king=Math.abs(b[i])===2;
+    for (const [dr,dc] of DIRS){
+      if (!king && dr!==-side) continue;
+      let nr=r+dr, nc=c+dc;
+      while (inb(nr,nc) && b[nr*8+nc]===0){
+        simple.push({from:i,path:[nr*8+nc],caps:[]});
+        if (!king) break;
+        nr+=dr; nc+=dc;
+      }
+    }
+  }
+  return simple;
+}
+function apply(b,m){
+  const t=b.slice(), p=t[m.from], to=m.path[m.path.length-1];
+  t[m.from]=0; m.caps.forEach(i=>t[i]=0);
+  t[to] = (Math.abs(p)===1 && (p>0 ? to>>3===0 : to>>3===7)) ? 2*Math.sign(p) : p;
+  return t;
+}
+function evalB(b){
+  let s=0;
+  for (let i=0;i<64;i++){
+    const v=b[i]; if(!v) continue;
+    const r=i>>3, c=i&7;
+    let x = Math.abs(v)===2 ? 320 : 100 + (v>0 ? 7-r : r)*4;
+    if (c>1 && c<6) x+=3;
+    s += v>0 ? x : -x;
+  }
+  return s;
+}
+function nm(b,side,d,a,bt){
+  const ms=gen(b,side);
+  if (!ms.length) return -1e5-d;
+  if (d===0) return evalB(b)*side;
+  let best=-Infinity;
+  for (const m of ms){
+    const v=-nm(apply(b,m),-side,d-1,-bt,-a);
+    if (v>best) best=v;
+    if (best>a) a=best;
+    if (a>=bt) break;
+  }
+  return best;
+}
+
+// ---------- состояние и интерфейс ----------
+let board, turn, mode, hist, quiet, over, busy, sel, prefix, moves, last, els;
+const grid=$('grid'), layer=$('layer');
+for (let i=0;i<64;i++){
+  const d=document.createElement('div');
+  d.dataset.i=i; d.dataset.d=((i>>3)+(i&7))%2===1?'1':'';
+  grid.appendChild(d);
+}
+grid.onclick = e => { const s=e.target.closest('[data-i]'); if (s) click(+s.dataset.i); };
+const place = (el,i) => { el.style.left=(i&7)*12.5+'%'; el.style.top=(i>>3)*12.5+'%'; };
+function mkPiece(i){
+  const el=document.createElement('div'), v=board[i];
+  el.className='p '+(v>0?'w':'b')+(Math.abs(v)===2?' k':'');
+  el.innerHTML='<div class="disc"></div>';
+  place(el,i); layer.appendChild(el); els[i]=el;
+}
+function build(){ layer.innerHTML=''; els={}; board.forEach((v,i)=>v&&mkPiece(i)); }
+function newGame(){
+  board=startBoard(); turn=1; hist=[]; quiet=0; over=false; busy=false; sel=-1; prefix=[]; last=[];
+  mode=$('mode').value; $('lvl').style.display = mode==='ai'?'':'none';
+  $('modal').classList.remove('show'); build(); refresh();
+}
+function paint(){
+  [...grid.children].forEach(s=>s.className = s.dataset.d ? 'sq d' : 'sq l');
+  const sq=i=>grid.children[i];
+  last.forEach(i=>sq(i).classList.add('last'));
+  if (over || busy) return;
+  if (sel<0){ if (moves[0] && moves[0].caps.length) moves.forEach(m=>sq(m.from).classList.add('must')); return; }
+  sq(sel).classList.add('sel');
+  prefix.forEach(i=>sq(i).classList.add('step'));
+  cands().forEach(m=>sq(m.path[prefix.length]).classList.add('hint'));
+}
+const cands = () => moves.filter(m=>m.from===sel && prefix.every((x,k)=>m.path[k]===x));
+function refresh(){
+  moves=gen(board,turn);
+  const cnt=s=>board.filter(v=>v*s>0).length;
+  $('nb').textContent = mode==='ai' ? 'Компьютер · чёрные' : 'Чёрные';
+  $('nw').textContent = mode==='ai' ? 'Вы · белые' : 'Белые';
+  $('kb').textContent = cnt(-1)+' шт.'; $('kw').textContent = cnt(1)+' шт.';
+  $('cb').classList.toggle('on', turn===-1); $('cw').classList.toggle('on', turn===1);
+  if (!moves.length) return finish(turn===1 ? -1 : 1);
+  if (quiet>=30) return finish(0);
+  const forced = moves[0].caps.length ? ' · бить обязательно!' : '';
+  $('status').textContent = (mode==='ai' && turn===-1) ? 'Компьютер думает…' : (turn===1?'Ход белых':'Ход чёрных') + forced;
+  paint();
+}
+function finish(w){
+  over=true; paint();
+  $('mt').textContent = w===0 ? 'Ничья' : mode==='ai' ? (w===1?'Вы победили! 🎉':'Компьютер победил') : (w===1?'Белые победили! 🎉':'Чёрные победили! 🎉');
+  $('status').textContent = w===0 ? '30 ходов дамками без взятий' : 'Игра окончена';
+  $('modal').classList.add('show');
+}
+function click(i){
+  if (over || busy || (mode==='ai' && turn===-1)) return;
+  if (sel>=0){
+    const c=cands();
+    const done=c.find(m=>m.path.length===prefix.length+1 && m.path[prefix.length]===i);
+    if (done) return doMove(done);
+    if (c.some(m=>m.path[prefix.length]===i)){ prefix.push(i); return paint(); }
+  }
+  sel = moves.some(m=>m.from===i) ? i : -1; prefix=[]; paint();
+}
+function doMove(m){
+  hist.push({b:board.slice(),turn,quiet,last:last.slice()});
+  const p=board[m.from], to=m.path[m.path.length-1], el=els[m.from];
+  delete els[m.from];
+  m.caps.forEach(i=>{ const e=els[i]; e.classList.add('gone'); setTimeout(()=>e.remove(),320); delete els[i]; });
+  board=apply(board,m); els[to]=el; place(el,to);
+  if (Math.abs(board[to])===2) el.classList.add('k');
+  last=[m.from,to];
+  quiet = (m.caps.length || Math.abs(p)===1) ? 0 : quiet+1;
+  turn=-turn; sel=-1; prefix=[]; busy=false;
+  refresh();
+  if (!over && mode==='ai' && turn===-1){ busy=true; setTimeout(aiMove,500); }
+}
+function aiMove(){
+  const ms=gen(board,-1), d=+$('lvl').value;
+  let best=-Infinity, pick=[];
+  for (const m of ms){
+    const v=-nm(apply(board,m),1,d-1,-1e9,1e9);
+    if (v>best){ best=v; pick=[m]; } else if (v===best) pick.push(m);
+  }
+  busy=false; doMove(pick[Math.random()*pick.length|0]);
+}
+function undo(){
+  if (busy || !hist.length) return;
+  let h=hist.pop();
+  if (mode==='ai' && h.turn===-1 && hist.length) h=hist.pop();
+  ({b:board,turn,quiet,last}=h); over=false; sel=-1; prefix=[];
+  $('modal').classList.remove('show'); build(); refresh();
+}
+$('new').onclick=$('again').onclick=$('mode').onchange=newGame;
+$('undo').onclick=undo;
+newGame();
+</script>
+</body>
+</html>
